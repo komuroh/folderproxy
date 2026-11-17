@@ -14,6 +14,29 @@ A single-folder PHP reverse proxy for editing a slow or distant website through 
 - **サイト固有の調整**: 特定ページの本文を正規表現で置換できる(`body_regex`)
 - **IP制限**: 許可したIPだけがアクセスできる
 
+## 他のプロキシとの違い
+PHPで動くリバースプロキシには、[no.php](https://github.com/michaelfranzl/no.php)、[php-reverse-proxy](https://github.com/nbhr/php-reverse-proxy)、[revprox](https://github.com/null-dev/revprox)、[php-ultra-small-proxy](https://packagist.org/packages/szczyglis/php-ultra-small-proxy) などがあります。
+folderproxy は、**元サイトのパスと違う場所(別ドメイン・サブフォルダ)に置いても、遅い元サイトを編集できる**ことを目的にしています。
+
+| | folderproxy | no.php | php-reverse-proxy | revprox | ultra-small-proxy |
+|---|---|---|---|---|---|
+| HTML/CSS/JS 内のURL書き換え | あり | なし(リダイレクトのみ) | 記載なし | 記載なし | あり |
+| 設置フォルダの自動判定 | あり | サブフォルダ可(元サイト側が同じパス前提) | あり | 記載なし | 記載なし |
+| ログイン・Cookie | Domain/Path/Secure を調整 | ドメイン変換 | 記載なし | 記載なし | あり |
+| POST・ファイルのアップロード | あり(multipart対応) | あり | 記載なし | 記載なし | POSTのみ |
+| 静的ファイルのキャッシュ | あり(更新確認つき) | なし | あり | なし | あり |
+| 大きなファイルのストリーミング | あり | 記載なし | 記載なし | あり | 記載なし |
+| ページごとの本文置換 | あり(`body_regex`) | なし | なし | なし | なし |
+| IP制限 | あり | なし | 記載なし | 記載なし | 記載なし |
+| ライセンス | MIT | MIT | Apache-2.0 | MIT | MIT |
+
+表は各プロジェクトのREADME等の記述から作ったもので、コードの実際の動作は確認していません。「記載なし」は、機能がないという意味ではありません。最新の内容は各プロジェクトで確認してください。
+
+目的が違う場合は、他のものが向いています。
+- 元サイトと同じパスで置ければよい、本文の書き換えが不要 → no.php のような透過プロキシ
+- 大きな動画やファイルを流すだけ → revprox
+- 任意のURLを見るための匿名Webプロキシ → PHP-Proxy、Glype など
+
 ## 必要なもの
 - PHP 7.4 以上(8.x 推奨)、cURL 拡張
 - Apache + `mod_rewrite`(`.htaccess` を使う場合)。nginx の場合は下記参照
