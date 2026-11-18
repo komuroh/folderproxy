@@ -5,8 +5,7 @@ return [
 	'origin_base' => getenv('PROXY_ORIGIN') ?: 'https://origin.example.com',
 	// 元サイトが認識するホスト名。Hostヘッダとして送る(バーチャルホスト対応)
 	'site_host'   => 'origin.example.com',
-	// 本文・リダイレクト内で、プロキシのURLに書き換えたいホスト名(元サイトのHTMLが自分のURLとして出すもの)。
-	// site_host は自動で含まれるので、別名・別ドメインがあるときだけ書く
+	// 本文・Location でプロキシURLに書き換える追加ホスト名(site_host は自動で含む)
 	'rewrite_hosts' => [],
 	// JS内の文字列 "/skin/..." のような、ルート直下の名前(設置フォルダ名を付けて書き換える)。
 	// HTMLの href/src/action や CSSの url(/..) は、ここに無くても自動で書き換わる
@@ -39,5 +38,5 @@ return [
 	'cache_max_bytes' => 5 * 1024 * 1024,
 
 	'timeout'     => 120,
-	'verify_ssl'  => true,   // 元サイトの証明書が正規なら true
+	'verify_ssl'  => true,   // 自己署名証明書なら false
 ];

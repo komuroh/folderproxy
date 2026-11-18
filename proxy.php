@@ -1,7 +1,7 @@
 <?php
 // folderproxy: 社内 -> このサーバー -> 遅い/遠い元サイト(PukiWiki 等)の編集用リバースプロキシ
 // ・Cookie(PHPセッション)とPOST(multipart含む)をそのまま中継
-// ・本文中の中国側URLをプロキシのURLに書き換え
+// ・本文中の元サイトURLをプロキシのURLに書き換え
 // ・静的ファイルのみキャッシュ
 
 if (!is_file(__DIR__ . '/config.php')) {
@@ -42,18 +42,16 @@ $proxy_base  = $host_base . $base_path;
 $origin     = rtrim($cfg['origin_base'], '/');
 $origin_host = $cfg['site_host'] ?? parse_url($origin, PHP_URL_HOST);   // 書換対象/Hostヘッダ(公開ホスト名)
 $site = 'https://' . $origin_host;
-// 本文/Locationを書き換える対象ホスト一覧(site_host + rewrite_hosts)
 $rw_hosts = array_values(array_unique(array_merge([$origin_host], $cfg['rewrite_hosts'] ?? [])));
 $origin_scheme = parse_url($origin, PHP_URL_SCHEME);
 
 $method = $_SERVER['REQUEST_METHOD'];
-// 中国側へ送るパス: 設置フォルダ名と proxy.php を取り除く
+// 元サイトへ送るパス: 設置フォルダ名と proxy.php を取り除く
 $uri = $_SERVER['REQUEST_URI'];
 if ($base_path !== '' && strpos($uri, $base_path) === 0) $uri = substr($uri, strlen($base_path));
 $uri = preg_replace('#^/proxy\.php(?=[/?]|$)#', '', $uri);
 if ($uri === '' || $uri[0] !== '/') $uri = '/' . $uri;
 
-// ---- 静的ファイルキャッシュ(GETのみ) ----
 $path = parse_url($uri, PHP_URL_PATH);
 $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 $cacheable = ($method === 'GET' && in_array($ext, $cfg['cache_ext'], true));
@@ -67,7 +65,7 @@ if ($cacheable) {
 		$m = json_decode(file_get_contents($cache_meta), true) ?: [];
 		$recheck = (int)($cfg['cache_recheck'] ?? 60);
 		$valid = true;
-		// 前回の確認から $recheck 秒たっていたら、中国側にHEADだけ送って更新日時/ETag/サイズを比べる(本体は取らない)
+		// 定期的に元サイトへHEADを送り、更新日時/ETag/サイズで変更を確認(本体は取らない)
 		if ($recheck > 0 && time() - ($m['checked'] ?? 0) >= $recheck) {
 			$hh = [];
 			$hc = curl_init($origin . $uri);
@@ -91,7 +89,7 @@ if ($cacheable) {
 				if ($same) { $m['checked'] = time(); @file_put_contents($cache_meta, json_encode($m)); }
 				else $valid = false;
 			} elseif ($hs >= 400) {
-				$valid = false;   // 中国側で削除された
+				$valid = false;   // 元サイトで削除・エラー
 			}
 		}
 		if ($valid) {
@@ -110,7 +108,6 @@ function cache_meta($h) {
 	        'etag' => $h['etag'] ?? '', 'len' => $h['content-length'] ?? '', 'checked' => time()];
 }
 
-// ---- リクエスト組み立て ----
 function flatten_post($data, $prefix = '') {
 	$out = [];
 	foreach ($data as $k => $v) {
@@ -148,7 +145,7 @@ foreach (['Cookie' => 'HTTP_COOKIE', 'User-Agent' => 'HTTP_USER_AGENT', 'Accept'
 $req_headers[] = 'X-Forwarded-For: ' . $_SERVER['REMOTE_ADDR'];
 foreach (['HTTP_REFERER' => 'Referer', 'HTTP_ORIGIN' => 'Origin'] as $s => $h) {
 	if (!empty($_SERVER[$s])) {
-		// Referer は設置フォルダ付き、Origin はホストのみ。どちらも中国側のURLに戻す
+		// Referer は設置フォルダ付き、Origin はホストのみ。どちらも元サイトのURLに戻す
 		$v = str_replace($proxy_base, $site, $_SERVER[$s]);
 		if ($h === 'Origin') $v = str_replace($host_base, $site, $v);
 		$req_headers[] = "$h: $v";
@@ -180,11 +177,11 @@ if ($method === 'POST' || $method === 'PUT' || $method === 'PATCH') {
 	}
 }
 
-// ---- レスポンス処理(テキストはバッファして書換、それ以外はストリーム) ----
+// レスポンス: テキストはバッファして書換、キャッシュ対象はtee、他はストリーム
 $is_text = false; $status = 200; $resp_headers = []; $mode = null; $buf = ''; $ctype_resp = ''; $cookies = [];
 curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($c, $line) use (&$status, &$resp_headers, &$cookies) {
 	$t = trim($line);
-	if (stripos($t, 'HTTP/') === 0) {            // 100 Continue やリダイレクト後の再開に備えリセット
+	if (stripos($t, 'HTTP/') === 0) {            // 100 Continue 等の中間レスポンスに備えリセット
 		$status = (int)explode(' ', $t)[1]; $resp_headers = []; $cookies = [];
 	} elseif (strpos($t, ':') !== false) {
 		list($k, $v) = explode(':', $t, 2);
@@ -217,7 +214,7 @@ function rewrite_url_text($s, array $hosts, $proxy_base) {
 			"http://$o_host"    => $proxy_base,
 			"https:\\/\\/$o_host" => str_replace('/', '\\/', $proxy_base),
 			"http:\\/\\/$o_host"  => str_replace('/', '\\/', $proxy_base),
-			"//$o_host"         => $p_host,                          // $p_host は // で始まる
+			"//$o_host"         => $p_host,
 			"\\/\\/$o_host"       => str_replace('/', '\\/', $p_host),
 			// URLエンコード済み(OAuthのredirect_uri等)
 			"https%3A%2F%2F$o_host" => rawurlencode($proxy_base),
@@ -298,9 +295,9 @@ if ($mode === 'tee') {   // 全体を受け取れた場合だけキャッシュ�
 	exit;
 }
 
-if ($mode === null || $mode === 'buffer') {      // 本文なし(304/リダイレクト等) / テキスト / キャッシュ対象
+if ($mode === null || $mode === 'buffer') {      // 本文なし(304/リダイレクト等) またはテキスト
 	$body = $is_text ? rewrite_root_relative(rewrite_url_text($buf, $rw_hosts, $proxy_base), $base_path, $cfg['root_names'] ?? []) : $buf;
-	if ($is_text) {   // config.php の body_regex: 特定ページの本文を正規表現で置換(例: アップロードのチャンク/タイムアウト)
+	if ($is_text) {   // config の body_regex: パスごとの本文置換
 		foreach ($cfg['body_regex'] ?? [] as $path_re => $rules) {
 			if (!preg_match($path_re, $path)) continue;
 			foreach ($rules as $r) $body = preg_replace($r[0], $r[1], $body);
