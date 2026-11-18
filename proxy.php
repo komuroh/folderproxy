@@ -19,7 +19,7 @@ function ip_allowed($ip, array $list) {
 		if (strpos($e, '/') === false) { if ($ip === $e) return true; continue; }
 		list($net, $bits) = explode('/', $e);
 		$bits = (int)$bits;
-		if ($bits < 0 || $bits > 32) continue;
+		if ($bits < 0 || $bits > 32 || ip2long($ip) === false || ip2long($net) === false) continue;   // CIDRはIPv4のみ
 		$mask = $bits === 0 ? 0 : (~0 << (32 - $bits));
 		if ((ip2long($ip) & $mask) === (ip2long($net) & $mask)) return true;
 	}
@@ -153,7 +153,9 @@ curl_setopt_array($ch, [
 	CURLOPT_HTTPHEADER     => $req_headers,
 	CURLOPT_FOLLOWLOCATION => false,   // リダイレクトはブラウザに返す(Locationは書き換え)
 	CURLOPT_ENCODING       => '',
-	CURLOPT_TIMEOUT        => $cfg['timeout'],
+	CURLOPT_TIMEOUT        => 0,   // 全体の時間は制限しない(遅い回線の大きな転送を切らない)。無通信だけ切る
+	CURLOPT_LOW_SPEED_LIMIT => 1,
+	CURLOPT_LOW_SPEED_TIME => $cfg['timeout'],
 	CURLOPT_CONNECTTIMEOUT => 20,
 	CURLOPT_SSL_VERIFYPEER => $cfg['verify_ssl'],
 	CURLOPT_SSL_VERIFYHOST => $cfg['verify_ssl'] ? 2 : 0,

@@ -35,6 +35,7 @@ return [
 	'cache_ext'   => ['jpg', 'jpeg', 'png', 'gif', 'ico', 'css', 'js', 'woff', 'woff2', 'ttf', 'otf', 'eot', 'svg'],
 	'cache_max_bytes' => 5 * 1024 * 1024,
 
+	// 元サイトから何秒間まったくデータが来なければ切るか(全体の所要時間は制限しない)
 	'timeout'     => 120,
 	'verify_ssl'  => true,   // 自己署名証明書なら false
 ];

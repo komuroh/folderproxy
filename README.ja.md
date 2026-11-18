@@ -82,7 +82,7 @@ HTTPS での公開を推奨します(ログインのCookieを守るため)。
 | `allow_ips` | アクセスを許可するIP(完全一致 / IPv4 CIDR)。空なら制限なし |
 | `cache_ttl` / `cache_recheck` | キャッシュの有効期限 / 元サイトへの更新確認の間隔(秒) |
 | `cache_ext` / `cache_max_bytes` | キャッシュする拡張子 / 1ファイルの上限 |
-| `timeout` / `verify_ssl` | 元サイトへの通信タイムアウト / 証明書の検証 |
+| `timeout` / `verify_ssl` | 元サイトから無通信が続いたら切るまでの秒数(転送全体の時間は制限しない) / 証明書の検証 |
 
 ## キャッシュ
 - 対象は `cache_ext` の拡張子(GETのみ)。HTMLや管理画面はキャッシュしません

@@ -81,7 +81,7 @@ Serving over HTTPS is recommended, to protect login cookies.
 | `allow_ips` | IPs allowed to access (exact match / IPv4 CIDR). Empty means no restriction |
 | `cache_ttl` / `cache_recheck` | Cache lifetime / interval for checking the origin for updates (seconds) |
 | `cache_ext` / `cache_max_bytes` | File extensions to cache / size limit per file |
-| `timeout` / `verify_ssl` | Timeout for origin requests / certificate verification |
+| `timeout` / `verify_ssl` | Seconds of silence from the origin before giving up (total transfer time is not limited) / certificate verification |
 
 ## Cache
 - Applies to the extensions in `cache_ext` (GET only). HTML and admin pages are not cached.
