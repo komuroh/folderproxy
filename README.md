@@ -78,7 +78,7 @@ Serving over HTTPS is recommended, to protect login cookies.
 | `root_names` | Top-level names such as `"/skin/..."` in JS strings (rewritten with the folder name) |
 | `body_regex` | `[path regex => [[search, replacement], ...]]` to replace parts of a page body |
 | `origin_ip` / `origin_port` | Connect to the origin's IP directly instead of using DNS |
-| `allow_ips` | IPs allowed to access (exact match / IPv4 CIDR). Empty means no restriction |
+| `allow_ips` | IPs allowed to access (exact match / IPv4 CIDR; IPv6 is exact match only). Empty means no restriction |
 | `cache_ttl` / `cache_recheck` | Cache lifetime / interval for checking the origin for updates (seconds) |
 | `cache_ext` / `cache_max_bytes` | File extensions to cache / size limit per file |
 | `timeout` / `verify_ssl` | Seconds of silence from the origin before giving up (total transfer time is not limited) / certificate verification |
@@ -87,6 +87,7 @@ Serving over HTTPS is recommended, to protect login cookies.
 - Applies to the extensions in `cache_ext` (GET only). HTML and admin pages are not cached.
 - The upper bound is the total size of cacheable files on the site; in practice only files you actually open are stored.
 - Old cache entries are not deleted automatically. Delete `cache/` to start over.
+- If several first requests for the same file arrive at once, each fetches it from the origin (files are never corrupted).
 
 ## Limitations and notes
 - **Speed depends on the origin's link.** First loads and writes do not get faster. Only cache hits and the leg from users to the proxy server do.
