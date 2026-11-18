@@ -1,5 +1,4 @@
 <?php
-// folderproxy 設定サンプル。config.php という名前でコピーして編集する(config.php は Git に入れない)。
 return [
 	// 元サイト(オリジン)。末尾スラッシュなし。http:// か https://
 	'origin_base' => getenv('PROXY_ORIGIN') ?: 'https://origin.example.com',
@@ -11,7 +10,6 @@ return [
 	// HTMLの href/src/action や CSSの url(/..) は、ここに無くても自動で書き換わる
 	'root_names'  => ['skin', 'image', 'attach', 'plugin'],
 	// 特定ページの本文を置換する: [パスの正規表現 => [[検索の正規表現, 置換後], ...]]
-	// 例: アップロード画面で、1回の送信を小さくして時間切れをなくす
 	'body_regex'  => [
 		// '#/upload\.php$#' => [
 		//     ['#chunkSize:\s*\d+#',  'chunkSize: 262144'],

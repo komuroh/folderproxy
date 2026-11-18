@@ -1,8 +1,5 @@
 <?php
 // folderproxy: 社内 -> このサーバー -> 遅い/遠い元サイト(PukiWiki 等)の編集用リバースプロキシ
-// ・Cookie(PHPセッション)とPOST(multipart含む)をそのまま中継
-// ・本文中の元サイトURLをプロキシのURLに書き換え
-// ・静的ファイルのみキャッシュ
 
 if (!is_file(__DIR__ . '/config.php')) {
 	http_response_code(500);
@@ -40,7 +37,7 @@ $host_base   = ($https ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'];
 $base_path   = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
 $proxy_base  = $host_base . $base_path;
 $origin     = rtrim($cfg['origin_base'], '/');
-$origin_host = $cfg['site_host'] ?? parse_url($origin, PHP_URL_HOST);   // 書換対象/Hostヘッダ(公開ホスト名)
+$origin_host = $cfg['site_host'] ?? parse_url($origin, PHP_URL_HOST);
 $site = 'https://' . $origin_host;
 $rw_hosts = array_values(array_unique(array_merge([$origin_host], $cfg['rewrite_hosts'] ?? [])));
 $origin_scheme = parse_url($origin, PHP_URL_SCHEME);
@@ -102,7 +99,6 @@ if ($cacheable) {
 	}
 }
 
-// キャッシュに添える情報(更新確認用の更新日時/ETag/サイズ)
 function cache_meta($h) {
 	return ['type' => $h['content-type'] ?? 'application/octet-stream', 'lm' => $h['last-modified'] ?? '',
 	        'etag' => $h['etag'] ?? '', 'len' => $h['content-length'] ?? '', 'checked' => time()];
@@ -117,7 +113,6 @@ function flatten_post($data, $prefix = '') {
 	return $out;
 }
 function flatten_files($files) {
-	// $_FILES を name[sub] 形式に展開
 	$out = [];
 	foreach ($files as $field => $f) {
 		if (is_array($f['name'])) {
@@ -157,7 +152,7 @@ curl_setopt_array($ch, [
 	CURLOPT_CUSTOMREQUEST  => $method,
 	CURLOPT_HTTPHEADER     => $req_headers,
 	CURLOPT_FOLLOWLOCATION => false,   // リダイレクトはブラウザに返す(Locationは書き換え)
-	CURLOPT_ENCODING       => '',      // gzip等は自動展開
+	CURLOPT_ENCODING       => '',
 	CURLOPT_TIMEOUT        => $cfg['timeout'],
 	CURLOPT_CONNECTTIMEOUT => 20,
 	CURLOPT_SSL_VERIFYPEER => $cfg['verify_ssl'],
@@ -191,14 +186,11 @@ curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($c, $line) use (&$status, &$r
 	return strlen($line);
 });
 
-// "/skin/x.js" のような / 始まりの相対URLに設置フォルダ名を付ける
 function rewrite_root_relative($s, $base_path, array $root_names) {
 	if ($base_path === '') return $s;
 	$b = preg_quote($base_path, '#');
 	$names = $root_names ? implode('|', array_map(function ($n) { return preg_quote($n, '#'); }, $root_names)) : '(?!)';
-	// href/src/action 属性
 	$s = preg_replace('#\b(href|src|action|data-src|data-href|poster)(\s*=\s*)(["\'])/(?!/|' . ltrim($b, '/') . '(?:/|["\']))#i', '$1$2$3' . $base_path . '/', $s);
-	// CSS: url(/..)  @import "/.."
 	$s = preg_replace('#url\(\s*(["\']?)/(?!/|' . ltrim($b, '/') . '/)#i', 'url($1' . $base_path . '/', $s);
 	$s = preg_replace('#(@import\s+)(["\'])/(?!/)#i', '$1$2' . $base_path . '/', $s);
 	// JS の文字列 "/skin/..." "/akanri.php" など(既知のルート直下名のみ)
@@ -206,7 +198,7 @@ function rewrite_root_relative($s, $base_path, array $root_names) {
 	return $s;
 }
 function rewrite_url_text($s, array $hosts, $proxy_base) {
-	$p_host = preg_replace('#^https?:#', '', $proxy_base);   // //host/設置フォルダ
+	$p_host = preg_replace('#^https?:#', '', $proxy_base);
 	$pairs = [];
 	foreach ($hosts as $o_host) {
 		$pairs += [
